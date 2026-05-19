@@ -40,6 +40,10 @@ The site serves:
 
 Keep the converter backend as a Node web service for v1. Render, Fly.io, Railway, or a small VPS are all fine.
 
+One-click Render Blueprint:
+
+[Deploy backend to Render](https://render.com/deploy?repo=https://github.com/Aleemcode/H2F-Bridge)
+
 Required environment variables:
 
 ```text

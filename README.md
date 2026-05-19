@@ -157,6 +157,12 @@ npm run site:build
 
 See [DEPLOYMENT.md](/Users/aleemakinyoola/Documents/htmltodesign%20plugin/DEPLOYMENT.md) for the Vercel, backend, Supabase, Chrome Web Store, and Figma Community launch path.
 
+## Deploy the backend
+
+Use the Render Blueprint:
+
+[Deploy backend to Render](https://render.com/deploy?repo=https://github.com/Aleemcode/H2F-Bridge)
+
 ## Notes
 
 - The backend persists captures in `backend/.data/`.
