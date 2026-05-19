@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML to Figma Bridge</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --primary: #ffffff;
+        --primary-pressed: #e8e8e8;
+        --on-primary: #000000;
+        --ink: #f4f4f6;
+        --body: #cdcdcd;
+        --muted: #9c9c9d;
+        --ash: #6a6b6c;
+        --canvas: #07080a;
+        --surface: #0d0d0d;
+        --surface-elevated: #101111;
+        --surface-card: #121212;
+        --line: #242728;
+        --line-strong: rgba(255, 255, 255, 0.16);
+        --blue: #57c1ff;
+        --blue-soft: rgba(87, 193, 255, 0.15);
+        --green: #59d499;
+        --green-soft: rgba(89, 212, 153, 0.15);
+      }
+
+      * { box-sizing: border-box; }
+
+      html {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        padding: 12px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% -10%, rgba(255, 87, 87, 0.14), transparent 180px),
+          var(--canvas);
+        color: var(--body);
+        font-family: Inter, "Inter Fallback", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-feature-settings: "calt", "kern", "liga", "ss03";
+      }
+
+      main {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 10px;
+        height: 100%;
+        min-width: 0;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        min-width: 0;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent), var(--surface);
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        top: -42px;
+        left: -24px;
+        width: 230px;
+        height: 32px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #ff5757, #a1131a);
+        transform: rotate(-14deg);
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      h1, h2, p { margin: 0; }
+
+      h1 {
+        font-size: 20px;
+        line-height: 1.15;
+        letter-spacing: -0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--ink);
+      }
+
+      .lede, .meta, .empty {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--body);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 88px;
+        gap: 8px;
+      }
+
+      input, button {
+        min-width: 0;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        font: 600 12px/1.2 Inter, "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
+        font-feature-settings: "calt", "kern", "liga", "ss03";
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        background: var(--surface-elevated);
+        color: var(--ink);
+      }
+
+      button {
+        appearance: none;
+        padding: 10px 12px;
+        cursor: pointer;
+      }
+
+      .primary {
+        color: var(--on-primary);
+        border-color: transparent;
+        background: var(--primary);
+      }
+
+      .secondary {
+        background: var(--surface-elevated);
+        color: var(--ink);
+      }
+
+      .captures {
+        display: grid;
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .capture {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--surface-elevated);
+        min-width: 0;
+      }
+
+      .capture h3 {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+        color: var(--ink);
+      }
+
+      .capture p {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
+
+      .capture-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .status {
+        font-size: 12px;
+        color: var(--ink);
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card hero">
+        <p class="eyebrow">Native Import</p>
+        <h1>HTML to Figma Bridge</h1>
+        <p class="lede">Pull recent browser captures from the local backend and import them as native Figma frames, text, images, and vectors.</p>
+      </section>
+
+      <section class="card">
+        <label for="backend-url">Backend URL</label>
+        <div class="row">
+          <input id="backend-url" value="http://localhost:3210" />
+          <button id="refresh" class="primary" type="button">Refresh</button>
+        </div>
+        <p id="status" class="meta">Loading captures...</p>
+      </section>
+
+      <section class="card">
+        <h2>Recent Captures</h2>
+        <p class="meta">Use the browser extension first, then refresh this list.</p>
+        <div id="captures" class="captures">
+          <p class="empty">No captures yet.</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const backendInput = document.getElementById("backend-url");
+      const refreshButton = document.getElementById("refresh");
+      const statusNode = document.getElementById("status");
+      const capturesNode = document.getElementById("captures");
+
+      refreshButton.addEventListener("click", () => {
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "refresh-captures",
+              backendUrl: backendInput.value.trim()
+            }
+          },
+          "*"
+        );
+        statusNode.textContent = "Refreshing captures...";
+      });
+
+      onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) {
+          return;
+        }
+
+        if (message.type === "captures-loaded") {
+          backendInput.value = message.backendUrl;
+          statusNode.textContent = `${message.captures.length} capture${message.captures.length === 1 ? "" : "s"} ready.`;
+          renderCaptures(message.captures);
+          return;
+        }
+
+        if (message.type === "captures-error") {
+          backendInput.value = message.backendUrl || backendInput.value;
+          statusNode.textContent = message.error;
+          renderCaptures([]);
+          return;
+        }
+
+        if (message.type === "import-complete") {
+          statusNode.textContent = `Imported ${message.name}.`;
+        }
+      };
+
+      function renderCaptures(captures) {
+        if (!captures.length) {
+          capturesNode.innerHTML = '<p class="empty">No captures yet. Capture a page from the browser extension first.</p>';
+          return;
+        }
+
+        capturesNode.innerHTML = captures
+          .map(
+            (capture) => `
+              <article class="capture">
+                <div>
+                  <h3>${escapeHtml(capture.title)}</h3>
+                  <p>${escapeHtml(capture.url)}</p>
+                  <p>${capture.mode} • ${capture.nodeCount} nodes • ${capture.assetCount} assets</p>
+                </div>
+                <div class="capture-actions">
+                  <button class="primary" data-import="${capture.captureId}" type="button">Import</button>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+
+        for (const button of capturesNode.querySelectorAll("[data-import]")) {
+          button.addEventListener("click", () => {
+            statusNode.textContent = `Importing ${button.dataset.import}...`;
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: "import-capture",
+                  backendUrl: backendInput.value.trim(),
+                  captureId: button.dataset.import
+                }
+              },
+              "*"
+            );
+          });
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+    </script>
+  </body>
+</html>

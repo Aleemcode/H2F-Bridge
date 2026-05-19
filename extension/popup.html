@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML to Figma</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Browser to Figma</p>
+        <h1>HTML to Figma</h1>
+        <p class="lede">
+          Capture a live page, upload a normalized design model, and import it through the
+          companion Figma plugin as native frames, text, images, and vectors.
+        </p>
+      </section>
+
+      <section class="panel panel-accent">
+        <div class="panel-head">
+          <h2>Capture</h2>
+          <p>Captures are uploaded automatically to the local backend.</p>
+        </div>
+
+        <div class="actions">
+          <button id="capture-page" class="button button-primary" type="button">
+            Capture Current Page
+          </button>
+          <button id="capture-selection" class="button button-secondary" type="button">
+            Capture Selection
+          </button>
+        </div>
+      </section>
+
+      <section class="panel metrics">
+        <div class="metric">
+          <span class="metric-label">Mode</span>
+          <strong id="capture-mode">No capture</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Nodes</span>
+          <strong id="capture-nodes">-</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Backend</span>
+          <strong id="capture-backend">Offline</strong>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Send to Figma</h2>
+          <p>After upload, open the import page and switch to the companion Figma plugin.</p>
+        </div>
+
+        <div class="actions">
+          <button id="send-to-figma" class="button button-dark" type="button" disabled>
+            Send to Figma
+          </button>
+          <button id="refresh-backend" class="button button-light" type="button">
+            Check Backend
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Backend</h2>
+          <p>Use the local conversion service URL that the extension and Figma plugin both share.</p>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Backend URL</span>
+          <input id="backend-url" type="url" value="http://localhost:3210" />
+        </label>
+
+        <button id="save-backend" class="button button-light" type="button">Save Backend URL</button>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Debug Export</h2>
+          <p>Keep JSON and SVG around for inspection while the Figma importer matures.</p>
+        </div>
+
+        <div class="grid">
+          <button id="copy-json" class="button button-dark" type="button" disabled>Copy JSON</button>
+          <button id="copy-svg" class="button button-dark" type="button" disabled>Copy SVG</button>
+          <button id="download-json" class="button button-light" type="button" disabled>
+            Download JSON
+          </button>
+          <button id="download-svg" class="button button-light" type="button" disabled>
+            Download SVG
+          </button>
+        </div>
+      </section>
+
+      <section class="status-wrap">
+        <p id="status" class="status">Ready.</p>
+        <p id="capture-title" class="subtle">Waiting for your first capture.</p>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

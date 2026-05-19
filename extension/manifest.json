@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "HTML to Design",
+  "version": "0.2.6",
+  "description": "Capture live HTML, upload a normalized design model, and import it into Figma with a companion plugin.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "downloads",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:3210/*",
+    "http://localhost:3210/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "HTML to Figma",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "config.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: html-to-figma-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PUBLIC_BACKEND_URL
+        sync: false
+      - key: CAPTURE_RETENTION_HOURS
+        value: "168"

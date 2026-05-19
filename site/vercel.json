@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    }
+  ]
+}
