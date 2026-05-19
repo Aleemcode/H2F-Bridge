@@ -2,6 +2,7 @@
   "name": "HTML to Figma Bridge",
   "id": "1638575114955325717",
   "api": "1.0.0",
+  "documentAccess": "dynamic-page",
   "main": "code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
