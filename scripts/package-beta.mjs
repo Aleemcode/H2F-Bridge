@@ -70,7 +70,7 @@ function applyProductionFigmaConfig(pluginDir, backendUrl) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   const code = fs.readFileSync(codePath, "utf8");
 
-  manifest.id = "html-to-figma-bridge";
+  manifest.id = "1638575114955325717";
   manifest.networkAccess = {
     allowedDomains: [backendUrl],
     devAllowedDomains: ["http://localhost:3210"]
