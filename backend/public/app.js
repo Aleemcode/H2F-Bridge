@@ -62,7 +62,7 @@ function App() {
             "Capture web apps and landing pages from the browser, send them through a local converter, and import native Figma frames, text, images, SVG vectors, and auto-layout candidates."
           ),
           h("div", { className: "hero-actions", id: "beta" },
-            h("a", { className: "button button-primary", href: "/health" }, "Check local backend"),
+            h("a", { className: "button button-primary", href: "https://html-to-figma-backend.onrender.com/health" }, "Check hosted backend"),
             h("a", { className: "button button-secondary", href: "#roadmap" }, "See v2 roadmap")
           ),
           h("div", { className: "keyline" },

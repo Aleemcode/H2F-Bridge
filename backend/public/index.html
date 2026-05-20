@@ -21,7 +21,167 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="stripe" aria-hidden="true"></div>
+      <header class="site-nav">
+        <a class="brand" href="/" aria-label="HTML to Figma Bridge home">
+          <span class="brand-mark">⌘</span>
+          <span>HTML to Figma Bridge</span>
+        </a>
+        <nav aria-label="Main navigation">
+          <a href="#workflow">Workflow</a>
+          <a href="#fidelity">Fidelity</a>
+          <a href="#privacy">Privacy</a>
+          <a class="nav-cta" href="#beta">Join beta</a>
+        </nav>
+      </header>
+      <main>
+        <section class="hero section-shell">
+          <div class="hero-copy">
+            <p class="eyebrow">Native import for designers</p>
+            <h1>Turn live HTML into editable Figma structure.</h1>
+            <p class="hero-lede">
+              Capture web apps and landing pages from the browser, send them through a local converter, and import native Figma frames, text, images, SVG vectors, and auto-layout candidates.
+            </p>
+            <div class="hero-actions" id="beta">
+              <a class="button button-primary" href="https://html-to-figma-backend.onrender.com/health">Check hosted backend</a>
+              <a class="button button-secondary" href="#roadmap">See v2 roadmap</a>
+            </div>
+            <div class="keyline">
+              <span class="keycap">1440 x 1024</span>
+              <span class="keycap">Native text</span>
+              <span class="keycap">Image fills</span>
+              <span class="keycap">Auto layout</span>
+            </div>
+          </div>
+          <div class="command-card" aria-label="Product workflow preview">
+            <div class="palette-header">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="palette-title">Capture command</span>
+              <span class="keycap">⌘ K</span>
+            </div>
+            <div class="search-row">
+              <span class="search-icon">⌕</span>
+              <span>Capture current page at 1440 x 1024</span>
+            </div>
+            <div class="command-list">
+              <div class="command-row active">
+                <span class="tile tile-blue">01</span>
+                <div>
+                  <strong>Capture from the browser</strong>
+                  <small>Use the extension for authenticated dashboards, selected sections, and viewport-aware page capture.</small>
+                </div>
+                <span class="status">Ready</span>
+              </div>
+              <div class="command-row">
+                <span class="tile tile-green">02</span>
+                <div>
+                  <strong>Convert into a design model</strong>
+                  <small>The backend resolves styles, assets, and layout hints before emitting a Figma-ready node tree.</small>
+                </div>
+                <span class="status muted">Beta</span>
+              </div>
+              <div class="command-row">
+                <span class="tile tile-yellow">03</span>
+                <div>
+                  <strong>Import with the Figma plugin</strong>
+                  <small>Recent captures import into the open Figma file as frames, editable text, images, and vectors.</small>
+                </div>
+                <span class="status muted">Beta</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="section-shell split" id="workflow">
+          <div>
+            <p class="eyebrow">Workflow</p>
+            <h2>Built as a bridge, not a flattened screenshot.</h2>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="feature-icon accent-blue">01</span>
+              <h3>Capture from the browser</h3>
+              <p>Use the extension for authenticated dashboards, selected sections, and viewport-aware page capture.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-icon accent-green">02</span>
+              <h3>Convert into a design model</h3>
+              <p>The backend resolves styles, assets, and layout hints before emitting a Figma-ready node tree.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-icon accent-yellow">03</span>
+              <h3>Import with the Figma plugin</h3>
+              <p>Recent captures import into the open Figma file as frames, editable text, images, and vectors.</p>
+            </article>
+          </div>
+        </section>
+        <section class="section-shell product-shot" id="fidelity">
+          <div class="shot-copy">
+            <p class="eyebrow">Fidelity targets</p>
+            <h2>Designed for app shells, dashboards, cards, navs, and landing pages.</h2>
+            <p>
+              Version 1 focuses on editable structure with strong visual parity: text remains editable, images become fills, inline SVG stays vector-based, and common flex layouts become auto-layout frames when confidence is high enough.
+            </p>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span>Viewport</span>
+              <strong>1440x1024</strong>
+              <small>Designer-first capture preset</small>
+            </div>
+            <div class="metric-card">
+              <span>Layers</span>
+              <strong>Native</strong>
+              <small>Frames, text, vectors, fills</small>
+            </div>
+            <div class="metric-card">
+              <span>Privacy</span>
+              <strong>Local beta</strong>
+              <small>User-triggered capture only</small>
+            </div>
+          </div>
+        </section>
+        <section class="section-shell roadmap" id="roadmap">
+          <div>
+            <p class="eyebrow">Roadmap</p>
+            <h2>What v2 should unlock.</h2>
+          </div>
+          <div class="roadmap-list">
+            <div class="roadmap-item">
+              <span>1</span>
+              <p>Preset viewport rendering for public URLs, including 1440x1024, tablet, and mobile captures.</p>
+            </div>
+            <div class="roadmap-item">
+              <span>2</span>
+              <p>Stronger landing-page capture with background images, lazy assets, font reports, and responsive checks.</p>
+            </div>
+            <div class="roadmap-item">
+              <span>3</span>
+              <p>Team beta with capture retention controls, private .h2d files, and shareable import links.</p>
+            </div>
+          </div>
+        </section>
+        <section class="section-shell privacy-panel" id="privacy">
+          <div>
+            <p class="eyebrow">Privacy posture</p>
+            <h2>Explicit capture. Short retention. No training by default.</h2>
+          </div>
+          <p>
+            This beta is designed around consent: captures are user-triggered, sensitive form fields should be excluded, and private-mode export can keep the conversion local. Before public distribution, the product should ship with deletion controls, a plain-language privacy policy, and capture retention limits.
+          </p>
+        </section>
+      </main>
+      <footer class="site-footer">
+        <span>HTML to Figma Bridge</span>
+        <span>Local alpha · built for editable design imports</span>
+        <span class="footer-links">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </span>
+      </footer>
+    </div>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
