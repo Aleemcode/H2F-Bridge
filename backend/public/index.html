@@ -31,12 +31,12 @@
           <span class="issue-mini">alpha</span>
         </a>
         <nav class="nav-links" aria-label="Main navigation">
+          <a class="nav-link" href="#install">Install</a>
+          <span class="dot">/</span>
           <a class="nav-link" href="#workflow">Workflow</a>
           <span class="dot">/</span>
-          <a class="nav-link" href="#fidelity">Fidelity</a>
-          <span class="dot">/</span>
           <a class="nav-link" href="#roadmap">Roadmap</a>
-          <a class="nav-cta" href="#beta">Join beta</a>
+          <a class="nav-cta" href="#install">Start testing</a>
         </nav>
       </div>
     </header>
@@ -69,15 +69,15 @@
               </span>
             </h1>
             <p class="hero-lede">
-              H2F Bridge captures live HTML, sends a normalized design model to your backend, and imports editable Figma frames, text, images, vectors, and auto-layout candidates.
+              H2F Bridge is a browser extension plus Figma plugin for turning live pages into editable design layers. Capture a website in Chrome, then import the converted model into Figma as frames, text, images, vectors, and auto-layout candidates.
             </p>
             <div class="hero-actions" id="beta">
-              <a class="button button-primary" href="https://h2f-bridge.vercel.app/privacy">Read privacy posture</a>
-              <a class="button button-ghost" href="#workflow">See how it works</a>
+              <a class="button button-primary" href="#install">Install / test the beta</a>
+              <a class="button button-ghost" href="https://h2f-bridge.vercel.app/privacy">Read privacy posture</a>
             </div>
             <div class="install-line" aria-label="Launch status">
               <span class="mono">$</span>
-              <code>capture --viewport 1440x1024 --output native-figma</code>
+              <code>chrome capture → hosted converter → figma native layers</code>
             </div>
           </div>
 
@@ -133,6 +133,51 @@
               <span>Frame / Text / Vector</span>
             </div>
           </aside>
+        </div>
+      </section>
+
+      <section class="section-shell install-section" id="install">
+        <div class="install-head" data-reveal>
+          <p class="eyebrow"><span class="live-dot"></span> Install / test flow</p>
+          <h2>One Chrome extension. One Figma plugin. A short capture loop.</h2>
+          <p>
+            Share this page with testers so they understand exactly what to install, what to click, and what result to expect. No account is required for the beta review flow.
+          </p>
+        </div>
+        <div class="install-grid" data-reveal>
+          <article class="install-card">
+            <span class="install-step">01</span>
+            <h3>Install the Chrome extension</h3>
+            <p>
+              Add H2F Bridge from the Chrome Web Store, then pin it to the toolbar. Open any normal webpage you want to convert.
+            </p>
+            <span class="install-note">Chrome Web Store review build</span>
+          </article>
+          <article class="install-card">
+            <span class="install-step">02</span>
+            <h3>Install the Figma plugin</h3>
+            <p>
+              Add the companion Figma plugin. It reads recent captures from the hosted backend and imports them into the open Figma file.
+            </p>
+            <span class="install-note">Figma Community companion</span>
+          </article>
+          <article class="install-card">
+            <span class="install-step">03</span>
+            <h3>Capture, refresh, import</h3>
+            <p>
+              Click “Capture Current Page” in Chrome, open the plugin in Figma, click “Refresh”, then import the latest capture as editable layers.
+            </p>
+            <span class="install-note">Expected output: native frames</span>
+          </article>
+        </div>
+        <div class="reviewer-panel" data-reveal>
+          <div>
+            <p class="eyebrow">Reviewer path</p>
+            <h3>No login required</h3>
+          </div>
+          <p>
+            Test on this website or any regular webpage. The extension only captures after the user clicks a capture button. Debug JSON/SVG downloads are optional; the main workflow is Chrome capture → hosted conversion → Figma plugin import.
+          </p>
         </div>
       </section>
 
