@@ -26,6 +26,7 @@ const requiredFiles = [
   "figma-plugin/ui.html",
   "README.md",
   "package.json",
+  "vercel.json",
   "site/package.json",
   "site/vercel.json",
   "scripts/build-site.mjs"
@@ -43,6 +44,7 @@ if (missing.length > 0) {
 checkJson("extension/manifest.json");
 checkJson("figma-plugin/manifest.json");
 checkJson("package.json");
+checkJson("vercel.json");
 checkJson("site/package.json");
 checkJson("site/vercel.json");
 
