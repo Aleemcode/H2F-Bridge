@@ -11,10 +11,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="grain" aria-hidden="true"></div>
@@ -164,7 +164,10 @@
             <p>
               Add H2F Bridge from the Chrome Web Store, then pin it to the toolbar. Open any normal webpage you want to convert.
             </p>
-            <span class="install-note">Chrome Web Store review build</span>
+            <div class="install-actions">
+              <a class="mini-button" href="https://chromewebstore.google.com/search/H2F%20Bridge" target="_blank" rel="noreferrer">Open Chrome Store</a>
+              <span class="install-note">Replace with final listing URL after approval</span>
+            </div>
           </article>
           <article class="install-card">
             <span class="install-step">02</span>
@@ -172,7 +175,10 @@
             <p>
               Add the companion Figma plugin. It reads recent captures from the hosted backend and imports them into the open Figma file.
             </p>
-            <span class="install-note">Figma Community companion</span>
+            <div class="install-actions">
+              <a class="mini-button" href="https://www.figma.com/community/plugin/1638575114955325717/html-to-figma-bridge" target="_blank" rel="noreferrer">Open Figma plugin</a>
+              <span class="install-note">Figma Community companion</span>
+            </div>
           </article>
           <article class="install-card">
             <span class="install-step">03</span>
@@ -180,7 +186,10 @@
             <p>
               Click “Capture Current Page” in Chrome, open the plugin in Figma, click “Refresh”, then import the latest capture as editable layers.
             </p>
-            <span class="install-note">Expected output: native frames</span>
+            <div class="install-actions">
+              <a class="mini-button" href="#workflow">View workflow</a>
+              <span class="install-note">Expected output: native frames</span>
+            </div>
           </article>
         </div>
         <div class="reviewer-panel" data-reveal>
@@ -293,6 +302,6 @@
         <a href="/terms">Terms</a>
       </span>
     </footer>
-    <script src="/app.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
