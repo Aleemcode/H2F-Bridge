@@ -4,3 +4,4 @@ backend/.data/
 node_modules/
 dist/
 site/public/
+.vercel
