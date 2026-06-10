@@ -6,10 +6,14 @@
   "scripts": {
     "start": "node backend/server.mjs",
     "dev:backend": "node backend/server.mjs",
+    "mcp": "node mcp-server/index.mjs",
     "inspect:make": "node scripts/inspect-make.mjs",
     "package:beta": "node scripts/package-beta.mjs",
     "site:build": "node scripts/build-site.mjs",
     "test:backend": "node scripts/test-backend.mjs",
     "validate": "node scripts/validate.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }

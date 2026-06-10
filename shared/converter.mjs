@@ -230,18 +230,15 @@ function inferAutoLayout(node, childNodes) {
 }
 
 function shouldInferAutoLayout(node, flowChildren) {
-  if (node.layout.flexWrap === "wrap") {
+  // flex-wrap IS valid Auto Layout (WRAP mode) — don't bail out here;
+  // inferAutoLayout already sets wrap:true when flexWrap === "wrap".
+
+  if (flowChildren.length > 32) {
     return false;
   }
 
-  if (flowChildren.length > 12) {
-    return false;
-  }
-
-  const textChildren = flowChildren.filter((child) => child.kind === "text");
-  if (textChildren.length > 2 && flowChildren.length > 3) {
-    return false;
-  }
+  // Allow any ratio of text-to-frame children — the old 2-text cap was
+  // too aggressive and dropped navbars, tag lists, and inline groups.
 
   const isHorizontal = node.layout.flexDirection === "row" || node.layout.flexDirection === "row-reverse";
   const sorted = [...flowChildren].sort((left, right) => {
@@ -255,7 +252,8 @@ function shouldInferAutoLayout(node, flowChildren) {
     const crossAxis = isHorizontal ? child.layout.y : child.layout.x;
     if (previousEnd !== null) {
       const currentStart = isHorizontal ? child.layout.x : child.layout.y;
-      if (currentStart + 2 < previousEnd) {
+      // Allow up to 4px overlap tolerance for sub-pixel rendering artefacts
+      if (currentStart + 4 < previousEnd) {
         return false;
       }
     }
@@ -266,7 +264,11 @@ function shouldInferAutoLayout(node, flowChildren) {
     maxCrossAxisDrift = Math.max(maxCrossAxisDrift, Math.abs(crossAxis - (isHorizontal ? sorted[0].layout.y : sorted[0].layout.x)));
   }
 
-  const crossAxisLimit = isHorizontal ? Math.max(node.layout.height * 0.5, 24) : Math.max(node.layout.width * 0.35, 24);
+  // Be more generous on vertical containers — wide sidebars and panels
+  // have natural cross-axis drift that shouldn't disqualify them.
+  const crossAxisLimit = isHorizontal
+    ? Math.max(node.layout.height * 0.6, 32)
+    : Math.max(node.layout.width * 0.55, 32);
   return maxCrossAxisDrift <= crossAxisLimit;
 }
 
@@ -283,7 +285,7 @@ function inferBlockAutoLayout(node, childNodes) {
     (child) => child.layout.position !== "absolute" && child.layout.position !== "fixed"
   );
 
-  if (flowChildren.length < 2 || flowChildren.length > 16) {
+  if (flowChildren.length < 2 || flowChildren.length > 32) {
     return null;
   }
 
