@@ -8,12 +8,12 @@
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": [
-      "https://html-to-figma-backend-qrnq.onrender.com",
-      "http://localhost:3210"
+      "https://html-to-figma-backend-qrnq.onrender.com"
     ],
     "devAllowedDomains": [
       "https://html-to-figma-backend-qrnq.onrender.com",
       "http://localhost:3210"
-    ]
+    ],
+    "reasoning": "This plugin fetches captured webpage design models from the HTML-to-Figma backend to import them as editable Figma frames."
   }
 }
