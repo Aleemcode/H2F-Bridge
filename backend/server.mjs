@@ -12,7 +12,11 @@ const CAPTURES_DIR = path.join(DATA_DIR, "captures");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT || "3210");
-const PUBLIC_BACKEND_URL = normalizePublicBackendUrl(process.env.PUBLIC_BACKEND_URL || `http://localhost:${PORT}`);
+const PUBLIC_BACKEND_URL = normalizePublicBackendUrl(
+  process.env.PUBLIC_BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  `http://localhost:${PORT}`
+);
 const CAPTURE_RETENTION_HOURS = Number(process.env.CAPTURE_RETENTION_HOURS || "168");
 
 ensureDir(CAPTURES_DIR);
