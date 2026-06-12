@@ -8,6 +8,6 @@ services:
     healthCheckPath: /health
     envVars:
       - key: PUBLIC_BACKEND_URL
-        sync: false
+        value: "https://html-to-figma-backend-qrnq.onrender.com"
       - key: CAPTURE_RETENTION_HOURS
         value: "168"
