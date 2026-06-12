@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_URL = "http://localhost:3210";
+const DEFAULT_BACKEND_URL = "https://html-to-figma-backend-qrnq.onrender.com";
 const FALLBACK_FONTS = [
   { family: "Inter", style: "Regular" },
   { family: "Roboto", style: "Regular" }
