@@ -662,7 +662,7 @@
       overflow: style.overflow,
       overflowX: style.overflowX,
       overflowY: style.overflowY,
-      color: style.color,
+      color: resolveTextColor(style),
       fontFamily: style.fontFamily,
       fontFamilies: parseFontFamilies(style.fontFamily),
       fontStyle: style.fontStyle,
@@ -1424,6 +1424,49 @@
     } catch (error) {
       return "";
     }
+  }
+
+  // Resolve the visible text color. Premium sites often paint text with a
+  // clipped gradient (-webkit-text-fill-color: transparent + a gradient
+  // background-image). In that case the computed `color` is invisible, so we
+  // fall back to the gradient's first color stop to keep the text readable.
+  function resolveTextColor(style) {
+    const fillColor = normalizeCssColor(
+      getCssProperty(style, "-webkit-text-fill-color") || style.webkitTextFillColor || ""
+    );
+    const isTransparent =
+      fillColor === "transparent" ||
+      fillColor === "rgba(0, 0, 0, 0)" ||
+      /rgba\([^)]*,\s*0\s*\)$/.test(fillColor);
+
+    const clip = (
+      getCssProperty(style, "-webkit-background-clip") ||
+      getCssProperty(style, "background-clip") ||
+      ""
+    ).toLowerCase();
+    const backgroundImage = getCssProperty(style, "background-image") || "";
+
+    if (isTransparent && clip.includes("text") && backgroundImage.includes("gradient")) {
+      const gradientColor = extractFirstGradientColor(backgroundImage);
+      if (gradientColor) {
+        return gradientColor;
+      }
+    }
+
+    // A non-transparent explicit text-fill-color wins over `color`.
+    if (fillColor && !isTransparent) {
+      return fillColor;
+    }
+
+    return style.color;
+  }
+
+  // Pull the first concrete color out of a CSS gradient string.
+  function extractFirstGradientColor(gradient) {
+    const match = String(gradient).match(
+      /(rgba?\([^)]*\)|#[0-9a-f]{3,8}|\b(?:hsl|hsla)\([^)]*\))/i
+    );
+    return match ? match[1] : null;
   }
 
   function toCamelCase(property) {
