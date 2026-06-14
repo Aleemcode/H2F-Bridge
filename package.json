@@ -7,6 +7,7 @@
     "start": "node backend/server.mjs",
     "dev:backend": "node backend/server.mjs",
     "mcp": "node mcp-server/index.mjs",
+    "fidelity": "node scripts/fidelity-check.mjs",
     "inspect:make": "node scripts/inspect-make.mjs",
     "package:beta": "node scripts/package-beta.mjs",
     "site:build": "node scripts/build-site.mjs",

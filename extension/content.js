@@ -164,7 +164,8 @@
     const state = {
       nodes: [],
       assets: [],
-      imageTasks: []
+      imageTasks: [],
+      rasterTasks: []
     };
 
     const rootNode = {
@@ -212,6 +213,7 @@
       }
     };
 
+    state.assetMap = assetMap;
     state.nodes.push(rootNode);
     registerFont(fontSet, state.assets, assetMap, "Inter");
 
@@ -219,6 +221,11 @@
 
     // Phase 1: bake image pixels into the capture so they can never crash later.
     await embedImageAssets(state);
+
+    // Pillar 1b: rasterize elements using CSS that Figma can't express
+    // structurally (filters, blend modes, masks, clip-path) so they remain
+    // visually perfect even if not editable.
+    await rasterizeHardElements(state);
 
     const captureId = `capture-${Date.now()}`;
     const capturePackage = {
@@ -407,6 +414,13 @@
         content: svgMarkup,
         mimeType: "image/svg+xml"
       });
+    }
+
+    // Pillar 1b: queue leaf elements with hard CSS for rasterization. We only
+    // target elements with no element children so we never have to prune a
+    // captured subtree — text-only and empty decorative nodes are safe.
+    if ((kind === "frame" || kind === "shape") && element.children.length === 0 && hasHardCss(style)) {
+      state.rasterTasks.push({ node, element });
     }
 
     registerFont(fontSet, state.assets, assetMap, style.fontFamily);
@@ -1288,6 +1302,123 @@
   function dataUrlMimeType(dataUrl) {
     const match = String(dataUrl || "").match(/^data:([^;,]+)/);
     return match ? match[1] : null;
+  }
+
+  // Pillar 1b: does this element use CSS that Figma can't reproduce structurally?
+  function hasHardCss(style) {
+    const filter = style.filter || "none";
+    const backdrop = getCssProperty(style, "backdrop-filter") || style.backdropFilter || "none";
+    const blend = style.mixBlendMode || "normal";
+    const clipPath = getCssProperty(style, "clip-path") || style.clipPath || "none";
+    const maskImage = getCssProperty(style, "mask-image") || getCssProperty(style, "-webkit-mask-image") || "none";
+
+    return (
+      (filter && filter !== "none") ||
+      (backdrop && backdrop !== "none") ||
+      (blend && blend !== "normal") ||
+      (clipPath && clipPath !== "none") ||
+      (maskImage && maskImage !== "none")
+    );
+  }
+
+  // Rasterize each queued hard-CSS element and swap the node to an image so the
+  // exotic styling is preserved as pixels. Best-effort: on any failure the
+  // original structured node is left untouched.
+  async function rasterizeHardElements(state) {
+    if (!Array.isArray(state.rasterTasks) || state.rasterTasks.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      state.rasterTasks.map(async (task) => {
+        try {
+          const dataUrl = await rasterizeElementToDataUrl(task.element);
+          if (!dataUrl) {
+            return;
+          }
+          task.node.kind = "image";
+          task.node.imageUrl = dataUrl;
+          task.node.assetId = registerAsset(state.assetMap || new Map(), state.assets, {
+            kind: "image",
+            url: dataUrl,
+            mimeType: "image/png",
+            sourceKind: "raster-fallback"
+          });
+        } catch (error) {
+          // Keep the structured node as a graceful fallback.
+        }
+      })
+    );
+  }
+
+  // In-page rasterizer using SVG <foreignObject>. Clones the element with its
+  // computed styles inlined, renders it through an <img>, and reads the pixels
+  // off a canvas. Returns null if the canvas is tainted or rendering fails.
+  function rasterizeElementToDataUrl(element) {
+    return new Promise((resolve) => {
+      try {
+        const rect = element.getBoundingClientRect();
+        const width = Math.max(Math.round(rect.width), 1);
+        const height = Math.max(Math.round(rect.height), 1);
+        if (width < 2 || height < 2 || width > 2000 || height > 2000) {
+          resolve(null);
+          return;
+        }
+
+        const clone = element.cloneNode(true);
+        inlineComputedStyleTree(element, clone);
+        clone.style.margin = "0";
+        clone.style.position = "static";
+        clone.style.transform = "none";
+
+        const xml = new XMLSerializer().serializeToString(clone);
+        const svg =
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+          `<foreignObject width="100%" height="100%">` +
+          `<div xmlns="http://www.w3.org/1999/xhtml">${xml}</div>` +
+          `</foreignObject></svg>`;
+
+        const image = new Image();
+        image.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext("2d");
+            context.drawImage(image, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/png"));
+          } catch (error) {
+            resolve(null);
+          }
+        };
+        image.onerror = () => resolve(null);
+        image.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  // Recursively copy computed styles from a live source subtree onto its clone
+  // so the foreignObject render matches what the browser paints.
+  function inlineComputedStyleTree(source, clone) {
+    if (!(source instanceof Element) || !(clone instanceof Element)) {
+      return;
+    }
+    const computed = window.getComputedStyle(source);
+    let cssText = "";
+    for (let index = 0; index < computed.length; index += 1) {
+      const property = computed[index];
+      cssText += `${property}:${computed.getPropertyValue(property)};`;
+    }
+    clone.setAttribute("style", cssText);
+
+    const sourceChildren = source.children;
+    const cloneChildren = clone.children;
+    const limit = Math.min(sourceChildren.length, cloneChildren.length);
+    for (let index = 0; index < limit; index += 1) {
+      inlineComputedStyleTree(sourceChildren[index], cloneChildren[index]);
+    }
   }
 
   function captureMediaSnapshot(element) {
