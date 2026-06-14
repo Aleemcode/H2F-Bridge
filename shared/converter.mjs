@@ -193,8 +193,11 @@ function convertNode(node, parentNode, childrenByParent, assets) {
   };
 }
 
+// Pillar 2: when the page declares display:flex, the browser has ALREADY
+// resolved the layout. We trust the captured flex properties 1:1 instead of
+// re-deriving geometry — that guesswork was what cramped navbars and pill rows.
 function inferAutoLayout(node, childNodes) {
-  if (node.layout.display !== "flex") {
+  if (node.layout.display !== "flex" && node.layout.display !== "inline-flex") {
     return null;
   }
 
@@ -206,11 +209,8 @@ function inferAutoLayout(node, childNodes) {
     return null;
   }
 
-  if (!shouldInferAutoLayout(node, flowChildren)) {
-    return null;
-  }
-
   const isHorizontal = node.layout.flexDirection === "row" || node.layout.flexDirection === "row-reverse";
+  const isWrap = node.layout.flexWrap === "wrap" || node.layout.flexWrap === "wrap-reverse";
   const spacing = safeNumber(
     node.layout.gap || (isHorizontal ? node.layout.columnGap : node.layout.rowGap),
     inferSpacing(flowChildren, isHorizontal)
@@ -223,53 +223,11 @@ function inferAutoLayout(node, childNodes) {
     paddingBottom: safeNumber(node.layout.paddingBottom, 0),
     paddingLeft: safeNumber(node.layout.paddingLeft, 0),
     itemSpacing: spacing,
+    counterAxisSpacing: safeNumber(isHorizontal ? node.layout.rowGap : node.layout.columnGap, spacing),
     primaryAxisAlignItems: mapPrimaryAxisAlignment(node.layout.justifyContent),
     counterAxisAlignItems: mapCounterAxisAlignment(node.layout.alignItems),
-    wrap: node.layout.flexWrap === "wrap"
+    wrap: isWrap
   };
-}
-
-function shouldInferAutoLayout(node, flowChildren) {
-  // flex-wrap IS valid Auto Layout (WRAP mode) — don't bail out here;
-  // inferAutoLayout already sets wrap:true when flexWrap === "wrap".
-
-  if (flowChildren.length > 32) {
-    return false;
-  }
-
-  // Allow any ratio of text-to-frame children — the old 2-text cap was
-  // too aggressive and dropped navbars, tag lists, and inline groups.
-
-  const isHorizontal = node.layout.flexDirection === "row" || node.layout.flexDirection === "row-reverse";
-  const sorted = [...flowChildren].sort((left, right) => {
-    return isHorizontal ? left.layout.x - right.layout.x : left.layout.y - right.layout.y;
-  });
-
-  let previousEnd = null;
-  let maxCrossAxisDrift = 0;
-
-  for (const child of sorted) {
-    const crossAxis = isHorizontal ? child.layout.y : child.layout.x;
-    if (previousEnd !== null) {
-      const currentStart = isHorizontal ? child.layout.x : child.layout.y;
-      // Allow up to 4px overlap tolerance for sub-pixel rendering artefacts
-      if (currentStart + 4 < previousEnd) {
-        return false;
-      }
-    }
-
-    previousEnd = isHorizontal
-      ? child.layout.x + child.layout.width
-      : child.layout.y + child.layout.height;
-    maxCrossAxisDrift = Math.max(maxCrossAxisDrift, Math.abs(crossAxis - (isHorizontal ? sorted[0].layout.y : sorted[0].layout.x)));
-  }
-
-  // Be more generous on vertical containers — wide sidebars and panels
-  // have natural cross-axis drift that shouldn't disqualify them.
-  const crossAxisLimit = isHorizontal
-    ? Math.max(node.layout.height * 0.6, 32)
-    : Math.max(node.layout.width * 0.55, 32);
-  return maxCrossAxisDrift <= crossAxisLimit;
 }
 
 function inferBlockAutoLayout(node, childNodes) {
@@ -857,11 +815,196 @@ function parseFilterEffects(value, type) {
 }
 
 function backgroundFills(style) {
+  const fills = [];
+
+  // Solid background color sits underneath any gradient layers.
   const color = style.backgroundColor;
-  if (!color || color === "transparent" || color === "rgba(0, 0, 0, 0)") {
-    return [];
+  if (color && !isTransparentColor(color)) {
+    fills.push(parseColor(color));
   }
-  return [parseColor(color)];
+
+  // Pillar 1a: map CSS gradients to native, editable Figma gradient paints.
+  const backgroundImage = style.backgroundImage || "";
+  if (backgroundImage.includes("gradient")) {
+    for (const gradient of parseGradients(backgroundImage)) {
+      fills.push(gradient);
+    }
+  }
+
+  return fills;
+}
+
+function isTransparentColor(color) {
+  const normalized = String(color).replace(/\s+/g, "").toLowerCase();
+  return normalized === "transparent" || normalized === "rgba(0,0,0,0)";
+}
+
+// Parse one or more CSS gradients (comma-separated background-image layers)
+// into Figma GradientPaint objects. CSS layers are top-to-bottom; Figma paints
+// are bottom-to-top, so we reverse to preserve stacking order.
+function parseGradients(backgroundImage) {
+  const gradients = [];
+  const layers = splitBackgroundLayers(backgroundImage);
+
+  for (const layer of layers) {
+    const linear = layer.match(/linear-gradient\(([\s\S]+)\)\s*$/i);
+    const radial = layer.match(/radial-gradient\(([\s\S]+)\)\s*$/i);
+    if (linear) {
+      const paint = buildLinearGradient(linear[1]);
+      if (paint) {
+        gradients.push(paint);
+      }
+    } else if (radial) {
+      const paint = buildRadialGradient(radial[1]);
+      if (paint) {
+        gradients.push(paint);
+      }
+    }
+  }
+
+  return gradients.reverse();
+}
+
+// Split "linear-gradient(...), url(...), radial-gradient(...)" into top-level
+// layers without breaking on commas inside parentheses.
+function splitBackgroundLayers(value) {
+  const layers = [];
+  let depth = 0;
+  let current = "";
+  for (const char of String(value)) {
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (char === "," && depth === 0) {
+      layers.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) {
+    layers.push(current.trim());
+  }
+  return layers.filter((layer) => layer.includes("gradient"));
+}
+
+function buildLinearGradient(body) {
+  const { angleDeg, stops } = parseGradientBody(body, /* defaultAngle */ 180);
+  if (stops.length < 2) {
+    return null;
+  }
+  return {
+    type: "GRADIENT_LINEAR",
+    gradientStops: stops,
+    gradientTransform: linearGradientTransform(angleDeg)
+  };
+}
+
+function buildRadialGradient(body) {
+  const { stops } = parseGradientBody(body, /* defaultAngle */ 0);
+  if (stops.length < 2) {
+    return null;
+  }
+  return {
+    type: "GRADIENT_RADIAL",
+    gradientStops: stops,
+    // Centered radial covering the box.
+    gradientTransform: [
+      [1, 0, 0],
+      [0, 1, 0]
+    ]
+  };
+}
+
+// Extract the leading angle (if any) and the color stops from a gradient body.
+function parseGradientBody(body, defaultAngle) {
+  const parts = splitTopLevel(body);
+  let angleDeg = defaultAngle;
+  let startIndex = 0;
+
+  const first = (parts[0] || "").trim();
+  if (/deg$/.test(first)) {
+    angleDeg = parseFloat(first);
+    startIndex = 1;
+  } else if (/^to\s+/i.test(first)) {
+    angleDeg = directionToAngle(first);
+    startIndex = 1;
+  }
+
+  const stopParts = parts.slice(startIndex);
+  const stops = [];
+  stopParts.forEach((part, index) => {
+    const stop = parseColorStop(part.trim(), index, stopParts.length);
+    if (stop) {
+      stops.push(stop);
+    }
+  });
+
+  return { angleDeg, stops };
+}
+
+function splitTopLevel(value) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const char of String(value)) {
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (char === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) {
+    parts.push(current);
+  }
+  return parts;
+}
+
+function parseColorStop(part, index, total) {
+  const colorMatch = part.match(/(rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}|hsla?\([^)]*\)|[a-zA-Z]+)/);
+  if (!colorMatch) {
+    return null;
+  }
+  const color = parseColor(colorMatch[1]);
+  const positionMatch = part.match(/([\d.]+)%/);
+  const position = positionMatch
+    ? clampNumber(parseFloat(positionMatch[1]) / 100, 0, 1)
+    : total > 1
+      ? index / (total - 1)
+      : 0;
+  return { position, color };
+}
+
+function directionToAngle(direction) {
+  const dir = direction.toLowerCase().replace(/^to\s+/, "").trim();
+  const map = {
+    top: 0,
+    "top right": 45,
+    right: 90,
+    "bottom right": 135,
+    bottom: 180,
+    "bottom left": 225,
+    left: 270,
+    "top left": 315
+  };
+  return map[dir] ?? 180;
+}
+
+// Build a Figma 2x3 gradient transform for a CSS linear-gradient angle.
+// Figma's identity transform is a left→right gradient (CSS 90deg), so we
+// rotate by (cssAngle - 90) about the box center (0.5, 0.5).
+function linearGradientTransform(cssAngleDeg) {
+  const theta = ((cssAngleDeg - 90) * Math.PI) / 180;
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+  const e = 0.5 - 0.5 * cos + 0.5 * sin;
+  const f = 0.5 - 0.5 * sin - 0.5 * cos;
+  return [
+    [cos, -sin, e],
+    [sin, cos, f]
+  ];
 }
 
 function strokeFills(style) {

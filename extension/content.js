@@ -637,6 +637,7 @@
   function extractStyle(style) {
     return {
       backgroundColor: style.backgroundColor,
+      backgroundImage: style.backgroundImage || "",
       borderColor: style.borderTopColor,
       borderWidth: safeNumber(style.borderTopWidth, 0),
       borderStyle: style.borderTopStyle,

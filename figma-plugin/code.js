@@ -385,6 +385,12 @@ function applyAutoLayout(frame, autoLayout) {
   frame.counterAxisAlignItems = autoLayout.counterAxisAlignItems;
   if (autoLayout.wrap && "layoutWrap" in frame) {
     frame.layoutWrap = "WRAP";
+    // Cross-axis gap between wrapped rows/columns (matches CSS row/column-gap).
+    if ("counterAxisSpacing" in frame && Number.isFinite(autoLayout.counterAxisSpacing)) {
+      safelySet(() => {
+        frame.counterAxisSpacing = autoLayout.counterAxisSpacing;
+      });
+    }
   }
 }
 
@@ -493,15 +499,34 @@ function toPaints(fills) {
     return [];
   }
 
-  return fills.map((fill) => ({
-    type: "SOLID",
-    color: {
-      r: fill.r,
-      g: fill.g,
-      b: fill.b
-    },
-    opacity: fill.a
-  }));
+  return fills.map((fill) => {
+    // Pillar 1a: native gradient paints (linear/radial) from the converter.
+    if (fill && (fill.type === "GRADIENT_LINEAR" || fill.type === "GRADIENT_RADIAL")) {
+      return {
+        type: fill.type,
+        gradientTransform: fill.gradientTransform || [[1, 0, 0], [0, 1, 0]],
+        gradientStops: (fill.gradientStops || []).map((stop) => ({
+          position: stop.position,
+          color: {
+            r: stop.color.r,
+            g: stop.color.g,
+            b: stop.color.b,
+            a: stop.color.a === undefined ? 1 : stop.color.a
+          }
+        }))
+      };
+    }
+
+    return {
+      type: "SOLID",
+      color: {
+        r: fill.r,
+        g: fill.g,
+        b: fill.b
+      },
+      opacity: fill.a
+    };
+  });
 }
 
 function toFigmaColor(fill) {
