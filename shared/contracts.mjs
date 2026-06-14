@@ -1,4 +1,4 @@
-export const APP_VERSION = "0.2.0";
+export const APP_VERSION = "0.3.0";
 export const DEFAULT_BACKEND_URL = "http://localhost:3210";
 
 export const STORAGE_KEYS = {
