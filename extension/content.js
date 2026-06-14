@@ -1,5 +1,5 @@
 (function bootstrapHtmlToFigma() {
-  const CONTENT_SCRIPT_VERSION = "0.2.6";
+  const CONTENT_SCRIPT_VERSION = "0.3.0";
   const runtimeState = window.__htmlToFigmaRuntimeState || {};
 
   if (runtimeState.messageListener) {
@@ -14,11 +14,12 @@
   window.__htmlToFigmaLoadedVersion = CONTENT_SCRIPT_VERSION;
   window.__htmlToFigmaRuntimeState = runtimeState;
 
-  const APP_VERSION = "0.2.6";
+  const APP_VERSION = "0.3.0";
   const MESSAGE_CAPTURE_PAGE = "html-to-figma/capture-page";
   const MESSAGE_START_SELECTION = "html-to-figma/start-selection";
   const MESSAGE_CAPTURE_READY = "html-to-figma/capture-ready";
   const MESSAGE_CONTENT_PING = "html-to-figma/content-ping";
+  const MESSAGE_FETCH_IMAGE = "html-to-figma/fetch-image";
 
   let selectionCleanup = null;
   let toastTimeoutId = null;
@@ -162,7 +163,8 @@
     const fontSet = new Set();
     const state = {
       nodes: [],
-      assets: []
+      assets: [],
+      imageTasks: []
     };
 
     const rootNode = {
@@ -214,6 +216,9 @@
     registerFont(fontSet, state.assets, assetMap, "Inter");
 
     captureElementTree(rootElement, "capture-root", 1, frame, state, assetMap, fontSet, 0, true);
+
+    // Phase 1: bake image pixels into the capture so they can never crash later.
+    await embedImageAssets(state);
 
     const captureId = `capture-${Date.now()}`;
     const capturePackage = {
@@ -376,6 +381,8 @@
         url: imageUrl,
         mimeType: guessMimeType(imageUrl)
       });
+      // Phase 1: remember the live <img> so we can bake its pixels in later.
+      state.imageTasks.push({ node, element, assetId: node.assetId, url: imageUrl });
     }
 
     if (kind === "media") {
@@ -979,12 +986,93 @@
 
     const resolvedColor = normalizeCssColor(style.color || "rgb(255, 255, 255)");
     clone.setAttribute("color", resolvedColor);
+
+    // Phase 2: bake the COMPUTED paint of every graphic element onto the clone.
+    // getComputedStyle() already resolves currentColor, var(), and CSS-class
+    // styling into concrete rgb() values — so this captures multi-color icons,
+    // CSS-styled SVGs, and <style>-block rules cleanly without string hacks.
+    inlineComputedSvgPaint(element, clone);
+
     preserveSvgStrokePresentation(element, clone);
     applySvgColorFallbacks(clone, resolvedColor);
     let markup = clone.outerHTML;
+    // Final safety net for any paint we couldn't resolve via computed styles
+    // (e.g. inside <use>/<symbol> expansions that have no live computed value).
     markup = markup.replace(/currentColor/g, resolvedColor);
     markup = markup.replace(/var\([^)]+\)/g, resolvedColor);
     return markup;
+  }
+
+  // Walk the live source SVG and its fresh clone in parallel (they are 1:1
+  // before any mutation) and copy resolved paint/geometry onto the clone.
+  function inlineComputedSvgPaint(sourceSvg, cloneSvg) {
+    const sourceNodes = [sourceSvg, ...sourceSvg.querySelectorAll("*")];
+    const cloneNodes = [cloneSvg, ...cloneSvg.querySelectorAll("*")];
+    const limit = Math.min(sourceNodes.length, cloneNodes.length);
+    const paintableTags = new Set([
+      "path", "circle", "rect", "line", "polyline", "polygon",
+      "ellipse", "g", "text", "tspan", "use", "svg"
+    ]);
+
+    for (let index = 0; index < limit; index += 1) {
+      const sourceNode = sourceNodes[index];
+      const cloneNode = cloneNodes[index];
+      if (!(sourceNode instanceof Element) || !(cloneNode instanceof Element)) {
+        continue;
+      }
+
+      const tag = sourceNode.tagName.toLowerCase();
+      if (!paintableTags.has(tag)) {
+        continue;
+      }
+
+      const computed = window.getComputedStyle(sourceNode);
+
+      // Resolved fill — bake unless explicitly none. Computed value has already
+      // turned currentColor / var() / class rules into a literal rgb().
+      const fill = normalizeCssColor(computed.fill);
+      if (fill && fill !== "none") {
+        cloneNode.setAttribute("fill", fill);
+        const fillOpacity = computed.fillOpacity;
+        if (fillOpacity && fillOpacity !== "1") {
+          cloneNode.setAttribute("fill-opacity", fillOpacity);
+        }
+      } else if (fill === "none") {
+        cloneNode.setAttribute("fill", "none");
+      }
+
+      // Resolved stroke — only bake a real, drawable stroke.
+      const stroke = normalizeCssColor(computed.stroke);
+      const strokeWidth = computed.strokeWidth;
+      if (stroke && stroke !== "none" && strokeWidth && strokeWidth !== "0px" && strokeWidth !== "0") {
+        cloneNode.setAttribute("stroke", stroke);
+        cloneNode.setAttribute("stroke-width", normalizeSvgLength(strokeWidth));
+        if (computed.strokeLinecap && computed.strokeLinecap !== "butt") {
+          cloneNode.setAttribute("stroke-linecap", computed.strokeLinecap);
+        }
+        if (computed.strokeLinejoin && computed.strokeLinejoin !== "miter") {
+          cloneNode.setAttribute("stroke-linejoin", computed.strokeLinejoin);
+        }
+        if (computed.strokeDasharray && computed.strokeDasharray !== "none") {
+          cloneNode.setAttribute("stroke-dasharray", computed.strokeDasharray);
+        }
+        if (computed.strokeOpacity && computed.strokeOpacity !== "1") {
+          cloneNode.setAttribute("stroke-opacity", computed.strokeOpacity);
+        }
+      }
+
+      // Element-level opacity and fill-rules.
+      if (computed.opacity && computed.opacity !== "1") {
+        cloneNode.setAttribute("opacity", computed.opacity);
+      }
+      if (computed.fillRule && computed.fillRule !== "nonzero") {
+        cloneNode.setAttribute("fill-rule", computed.fillRule);
+      }
+      // Strip any inline style/class so the baked attributes win and no
+      // unresolved var()/currentColor leaks through the class cascade.
+      cloneNode.removeAttribute("style");
+      cloneNode.removeAttribute("class");
+    }
   }
 
   function applySvgColorFallbacks(svgElement, resolvedColor) {
@@ -1095,6 +1183,107 @@
       return element.currentSrc || element.src || "";
     }
     return "";
+  }
+
+  // Phase 1: convert every captured <img> into baked-in base64 pixels.
+  // Strategy: rasterize the already-loaded element in-page first (exact rendered
+  // resolution, no network). If the canvas is tainted by cross-origin pixels,
+  // fall back to fetching the bytes through the extension background script,
+  // which is not subject to page-origin CORS.
+  async function embedImageAssets(state) {
+    if (!Array.isArray(state.imageTasks) || state.imageTasks.length === 0) {
+      return;
+    }
+
+    const resolvedByUrl = new Map();
+
+    await Promise.all(
+      state.imageTasks.map(async (task) => {
+        try {
+          let dataUrl = task.url && resolvedByUrl.get(task.url);
+
+          if (!dataUrl) {
+            dataUrl = rasterizeImageElement(task.element);
+            if (!dataUrl && task.url) {
+              dataUrl = await fetchImageAsDataUrl(task.url);
+            }
+            if (dataUrl && task.url) {
+              resolvedByUrl.set(task.url, dataUrl);
+            }
+          }
+
+          if (!dataUrl) {
+            return;
+          }
+
+          task.node.imageUrl = dataUrl;
+          const asset = state.assets.find((candidate) => candidate.id === task.assetId);
+          if (asset) {
+            asset.url = dataUrl;
+            asset.mimeType = dataUrlMimeType(dataUrl) || asset.mimeType;
+            asset.embedded = true;
+          }
+        } catch (error) {
+          // Leave the original URL in place as a graceful fallback.
+        }
+      })
+    );
+  }
+
+  // Draw an already-loaded image element to a canvas at its natural resolution.
+  // Returns a data URL, or null if the element isn't ready or the canvas is
+  // tainted (cross-origin without CORS headers).
+  function rasterizeImageElement(element) {
+    try {
+      if (!element || element.tagName !== "IMG") {
+        return null;
+      }
+      const naturalWidth = element.naturalWidth || element.width || 0;
+      const naturalHeight = element.naturalHeight || element.height || 0;
+      if (naturalWidth < 1 || naturalHeight < 1) {
+        return null;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = naturalWidth;
+      canvas.height = naturalHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(element, 0, 0, naturalWidth, naturalHeight);
+      // Throws a SecurityError if the canvas was tainted — caught below.
+      return canvas.toDataURL("image/png");
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Ask the background service worker to fetch the image bytes (CORS-exempt with
+  // host_permissions) and return them as a base64 data URL.
+  function fetchImageAsDataUrl(url) {
+    if (!url || url.startsWith("data:")) {
+      return Promise.resolve(url || null);
+    }
+
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage(
+          { type: MESSAGE_FETCH_IMAGE, url },
+          (response) => {
+            if (chrome.runtime.lastError || !response?.ok || !response.dataUrl) {
+              resolve(null);
+              return;
+            }
+            resolve(response.dataUrl);
+          }
+        );
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  function dataUrlMimeType(dataUrl) {
+    const match = String(dataUrl || "").match(/^data:([^;,]+)/);
+    return match ? match[1] : null;
   }
 
   function captureMediaSnapshot(element) {

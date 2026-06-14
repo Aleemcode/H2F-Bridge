@@ -14,6 +14,7 @@ const MESSAGE_DOWNLOAD_EXPORT = "html-to-figma/download-export";
 const MESSAGE_CAPTURE_READY = "html-to-figma/capture-ready";
 const MESSAGE_OPEN_IMPORT = "html-to-figma/open-import";
 const MESSAGE_BACKEND_HEALTH = "html-to-figma/backend-health";
+const MESSAGE_FETCH_IMAGE = "html-to-figma/fetch-image";
 
 chrome.runtime.onInstalled.addListener(async () => {
   const result = await chrome.storage.local.get(STORAGE_KEYS.backendUrl);
@@ -57,8 +58,44 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === MESSAGE_FETCH_IMAGE) {
+    fetchImageAsDataUrl(message.url)
+      .then((dataUrl) => sendResponse({ ok: true, dataUrl }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   return false;
 });
+
+// Fetch an image from any origin (CORS-exempt thanks to host_permissions) and
+// return it as a base64 data URL so the content script can bake it into the
+// capture. This is why captured images never "crash" on import.
+async function fetchImageAsDataUrl(url) {
+  if (!url || url.startsWith("data:")) {
+    return url || null;
+  }
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "HTML-to-Figma Capture" }
+  });
+  if (!response.ok) {
+    throw new Error(`Image fetch failed with ${response.status}.`);
+  }
+
+  const blob = await response.blob();
+  // Guard against pathologically large images bloating the capture payload.
+  if (blob.size > 8 * 1024 * 1024) {
+    throw new Error("Image exceeds 8MB embed limit.");
+  }
+
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not encode image."));
+    reader.readAsDataURL(blob);
+  });
+}
 
 async function handleCaptureReady(capture) {
   if (!capture?.capture?.id) {
