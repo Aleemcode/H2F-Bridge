@@ -652,6 +652,7 @@
     return {
       backgroundColor: style.backgroundColor,
       backgroundImage: style.backgroundImage || "",
+      backgroundClip: getCssProperty(style, "background-clip") || getCssProperty(style, "-webkit-background-clip") || style.backgroundClip || "",
       borderColor: style.borderTopColor,
       borderWidth: safeNumber(style.borderTopWidth, 0),
       borderStyle: style.borderTopStyle,

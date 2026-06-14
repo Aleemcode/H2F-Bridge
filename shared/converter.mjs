@@ -824,8 +824,11 @@ function backgroundFills(style) {
   }
 
   // Pillar 1a: map CSS gradients to native, editable Figma gradient paints.
+  // Skip when background-clip:text — there the gradient paints the TEXT glyphs,
+  // not the box, and is handled by the text node's color (resolveTextColor).
   const backgroundImage = style.backgroundImage || "";
-  if (backgroundImage.includes("gradient")) {
+  const clipsToText = String(style.backgroundClip || "").toLowerCase().includes("text");
+  if (backgroundImage.includes("gradient") && !clipsToText) {
     for (const gradient of parseGradients(backgroundImage)) {
       fills.push(gradient);
     }
