@@ -489,6 +489,9 @@
 
     registerFont(fontSet, state.assets, assetMap, style.fontFamily);
     const isIcon = isIconTextNode(textNode.parentElement, style, value);
+    // Apply the CSS text-transform so captured text matches what's rendered
+    // (e.g. "Library" → "LIBRARY" when text-transform: uppercase is set).
+    const displayValue = applyTextTransform(value, style.textTransform);
 
     return {
       id: nextId("text"),
@@ -497,8 +500,8 @@
       domDepth: depth,
       kind: "text",
       tagName: "#text",
-      name: value.slice(0, 48),
-      textContent: value,
+      name: displayValue.slice(0, 48),
+      textContent: displayValue,
       role: isIcon ? "icon" : "text",
       semanticRole: isIcon ? "icon" : "text",
       visible: true,
@@ -1445,6 +1448,21 @@
 
   function collapseWhitespace(value) {
     return String(value).replace(/\s+/g, " ").trim();
+  }
+
+  // Mirror CSS text-transform so captured characters match the rendered output.
+  function applyTextTransform(value, textTransform) {
+    const transform = String(textTransform || "none").toLowerCase();
+    if (transform === "uppercase") {
+      return value.toUpperCase();
+    }
+    if (transform === "lowercase") {
+      return value.toLowerCase();
+    }
+    if (transform === "capitalize") {
+      return value.replace(/\b\p{L}/gu, (character) => character.toUpperCase());
+    }
+    return value;
   }
 
   function safeNumber(value, fallback) {
