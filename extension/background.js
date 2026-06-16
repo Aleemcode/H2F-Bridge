@@ -15,6 +15,7 @@ const MESSAGE_CAPTURE_READY = "html-to-figma/capture-ready";
 const MESSAGE_OPEN_IMPORT = "html-to-figma/open-import";
 const MESSAGE_BACKEND_HEALTH = "html-to-figma/backend-health";
 const MESSAGE_FETCH_IMAGE = "html-to-figma/fetch-image";
+const MESSAGE_CAPTURE_VIEWPORT = "html-to-figma/capture-viewport";
 
 chrome.runtime.onInstalled.addListener(async () => {
   const result = await chrome.storage.local.get(STORAGE_KEYS.backendUrl);
@@ -65,8 +66,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === MESSAGE_CAPTURE_VIEWPORT) {
+    captureVisibleViewport(_sender?.tab?.windowId)
+      .then((dataUrl) => sendResponse({ ok: true, dataUrl }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   return false;
 });
+
+// Screenshot the currently visible portion of the tab. The content script
+// scrolls the page and calls this for each segment to build a full-page image.
+async function captureVisibleViewport(windowId) {
+  const options = { format: "png" };
+  if (typeof windowId === "number") {
+    return chrome.tabs.captureVisibleTab(windowId, options);
+  }
+  return chrome.tabs.captureVisibleTab(options);
+}
 
 // Fetch an image from any origin (CORS-exempt thanks to host_permissions) and
 // return it as a base64 data URL so the content script can bake it into the

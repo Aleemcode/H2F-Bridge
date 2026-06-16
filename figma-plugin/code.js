@@ -1,4 +1,5 @@
 const DEFAULT_BACKEND_URL = "https://html-to-figma-backend-qrnq.onrender.com";
+const PLUGIN_VERSION = "0.3.0";
 const FALLBACK_FONTS = [
   { family: "Inter", style: "Regular" },
   { family: "Roboto", style: "Regular" }
@@ -36,9 +37,12 @@ async function refreshCaptures(backendUrl) {
   try {
     const response = await fetch(`${backendUrl}/captures/recent`);
     const payload = await response.json();
+    const backendVersion = await fetchBackendVersion(backendUrl);
     figma.ui.postMessage({
       type: "captures-loaded",
       backendUrl,
+      pluginVersion: PLUGIN_VERSION,
+      backendVersion,
       captures: payload.captures || []
     });
   } catch (error) {
@@ -47,6 +51,17 @@ async function refreshCaptures(backendUrl) {
       backendUrl,
       error: error.message
     });
+  }
+}
+
+// Best-effort backend version probe so the UI can flag a stale deploy.
+async function fetchBackendVersion(backendUrl) {
+  try {
+    const response = await fetch(`${backendUrl}/health`);
+    const payload = await response.json();
+    return payload.appVersion || null;
+  } catch (error) {
+    return null;
   }
 }
 
@@ -59,6 +74,8 @@ async function importCapture(backendUrl, captureId) {
     if ("appendChild" in figma.currentPage) {
       figma.currentPage.appendChild(rootNode);
     }
+
+    lockScreenshotBackdrop(rootNode);
 
     figma.currentPage.selection = [rootNode];
     figma.viewport.scrollAndZoomIntoView([rootNode]);
@@ -76,6 +93,24 @@ async function importCapture(backendUrl, captureId) {
       error: error.message
     });
     figma.notify(`Import failed: ${error.message}`, { error: true });
+  }
+}
+
+// Lock the pixel-perfect screenshot backdrop so it acts as a non-interactive
+// reference layer. Users can unlock or hide it from the Layers panel.
+function lockScreenshotBackdrop(rootNode) {
+  try {
+    if (!rootNode || !("children" in rootNode)) {
+      return;
+    }
+    for (const child of rootNode.children) {
+      if (child.name === "Reference (pixel-perfect)") {
+        child.locked = true;
+        return;
+      }
+    }
+  } catch (error) {
+    // Non-fatal — the backdrop just stays unlocked.
   }
 }
 

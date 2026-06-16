@@ -20,6 +20,7 @@
   const MESSAGE_CAPTURE_READY = "html-to-figma/capture-ready";
   const MESSAGE_CONTENT_PING = "html-to-figma/content-ping";
   const MESSAGE_FETCH_IMAGE = "html-to-figma/fetch-image";
+  const MESSAGE_CAPTURE_VIEWPORT = "html-to-figma/capture-viewport";
 
   let selectionCleanup = null;
   let toastTimeoutId = null;
@@ -226,6 +227,13 @@
     // structurally (filters, blend modes, masks, clip-path) so they remain
     // visually perfect even if not editable.
     await rasterizeHardElements(state);
+
+    // Ground-truth floor: stitch a full-page screenshot and place it as a
+    // locked backdrop beneath the structured nodes, so the import always looks
+    // exactly like the page even where structured reconstruction is imperfect.
+    if (mode === "page") {
+      await attachScreenshotBackdrop(state, frame);
+    }
 
     const captureId = `capture-${Date.now()}`;
     const capturePackage = {
@@ -1305,6 +1313,147 @@
     return match ? match[1] : null;
   }
 
+  // Build a full-page screenshot and insert it as the first child of the root
+  // (childIndex -1 sorts it to the back). captureVisibleTab images are never
+  // canvas-tainted, so this floor is reliable across origins.
+  async function attachScreenshotBackdrop(state, frame) {
+    try {
+      const dataUrl = await captureFullPageScreenshot(frame);
+      if (!dataUrl) {
+        return;
+      }
+
+      state.nodes.unshift({
+        id: "capture-screenshot",
+        parentId: "capture-root",
+        childIndex: -1,
+        domDepth: 1,
+        kind: "image",
+        tagName: "IMG",
+        name: "Reference (pixel-perfect)",
+        semanticRole: "reference",
+        visible: true,
+        imageUrl: dataUrl,
+        assetId: registerAsset(state.assetMap || new Map(), state.assets, {
+          kind: "image",
+          url: dataUrl,
+          mimeType: "image/png",
+          sourceKind: "screenshot-backdrop"
+        }),
+        layout: {
+          x: 0,
+          y: 0,
+          width: round(frame.width),
+          height: round(frame.height),
+          display: "block",
+          position: "static",
+          paddingTop: 0,
+          paddingRight: 0,
+          paddingBottom: 0,
+          paddingLeft: 0,
+          gap: 0,
+          rowGap: 0,
+          columnGap: 0,
+          flexDirection: "row",
+          justifyContent: "flex-start",
+          alignItems: "stretch",
+          alignContent: "stretch",
+          flexWrap: "nowrap",
+          zIndex: 0
+        },
+        style: {
+          backgroundColor: "rgba(0, 0, 0, 0)",
+          opacity: 1,
+          overflow: "hidden"
+        }
+      });
+    } catch (error) {
+      // The structured capture stands on its own if the screenshot fails.
+    }
+  }
+
+  async function captureFullPageScreenshot(frame) {
+    const dpr = window.devicePixelRatio || 1;
+    const pageWidth = Math.round(frame.width);
+    const pageHeight = Math.round(frame.height);
+    const viewportHeight = window.innerHeight;
+
+    // Bound the canvas to the platform's ~16k px limit; scale down if taller.
+    const maxCanvasPx = 16000;
+    const scale = Math.min(1, maxCanvasPx / (pageHeight * dpr));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(pageWidth * dpr * scale);
+    canvas.height = Math.round(pageHeight * dpr * scale);
+    const context = canvas.getContext("2d");
+
+    const originalScrollX = window.scrollX;
+    const originalScrollY = window.scrollY;
+    const maxSegments = 30;
+
+    try {
+      let segment = 0;
+      for (let offsetY = 0; offsetY < pageHeight && segment < maxSegments; offsetY += viewportHeight) {
+        window.scrollTo(0, offsetY);
+        await nextPaint();
+        // captureVisibleTab is rate-limited (~2/s); throttle between segments.
+        await wait(350);
+
+        const segmentDataUrl = await requestViewportCapture();
+        if (!segmentDataUrl) {
+          continue;
+        }
+
+        const image = await loadImage(segmentDataUrl);
+        const destY = Math.round(offsetY * dpr * scale);
+        context.drawImage(
+          image,
+          0,
+          0,
+          image.width,
+          image.height,
+          0,
+          destY,
+          Math.round(image.width * scale),
+          Math.round(image.height * scale)
+        );
+        segment += 1;
+      }
+      return canvas.toDataURL("image/png");
+    } finally {
+      window.scrollTo(originalScrollX, originalScrollY);
+    }
+  }
+
+  function requestViewportCapture() {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ type: MESSAGE_CAPTURE_VIEWPORT }, (response) => {
+          if (chrome.runtime.lastError || !response?.ok) {
+            resolve(null);
+            return;
+          }
+          resolve(response.dataUrl || null);
+        });
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("Could not load screenshot segment."));
+      image.src = src;
+    });
+  }
+
+  function nextPaint() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
   // Pillar 1b: does this element use CSS that Figma can't reproduce structurally?
   function hasHardCss(style) {
     const filter = style.filter || "none";
@@ -1644,6 +1793,10 @@
   function safeNumber(value, fallback) {
     const numeric = Number.parseFloat(value);
     return Number.isFinite(numeric) ? numeric : fallback;
+  }
+
+  function wait(milliseconds) {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
   }
 
   function guessMimeType(value) {

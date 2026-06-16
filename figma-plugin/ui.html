@@ -217,10 +217,11 @@
       <section class="card">
         <label for="backend-url">Backend URL</label>
         <div class="row">
-          <input id="backend-url" value="http://localhost:3210" />
+          <input id="backend-url" value="https://html-to-figma-backend-qrnq.onrender.com" />
           <button id="refresh" class="primary" type="button">Refresh</button>
         </div>
         <p id="status" class="meta">Loading captures...</p>
+        <p id="version-badge" class="meta" style="opacity:0.6;font-size:11px;">plugin v— · backend v—</p>
       </section>
 
       <section class="card">
@@ -260,6 +261,7 @@
         if (message.type === "captures-loaded") {
           backendInput.value = message.backendUrl;
           statusNode.textContent = `${message.captures.length} capture${message.captures.length === 1 ? "" : "s"} ready.`;
+          updateVersionBadge(message.pluginVersion, message.backendVersion);
           renderCaptures(message.captures);
           return;
         }
@@ -275,6 +277,18 @@
           statusNode.textContent = `Imported ${message.name}.`;
         }
       };
+
+      function updateVersionBadge(pluginVersion, backendVersion) {
+        const badge = document.getElementById("version-badge");
+        if (!badge) {
+          return;
+        }
+        const plugin = pluginVersion || "—";
+        const backend = backendVersion || "—";
+        const match = plugin === backend;
+        badge.textContent = `plugin v${plugin} · backend v${backend}` + (match ? " ✓" : " ⚠ mismatch");
+        badge.style.color = match ? "" : "#e0822c";
+      }
 
       function renderCaptures(captures) {
         if (!captures.length) {
